@@ -1,24 +1,32 @@
-# Tic-Tac-Toe
-Tic Tac Toe for 2 players made in Python3
+# Jogo da Velha
+Jogo da velha para 2 jogadores feito em Python3 - agora utilizando sockets TCP!
 
 
 ## About
-Tic-tac-toe (also known as noughts and crosses or Xs and Os) is a game for two players, X and O, who take turns marking the spaces in a 3×3 grid. The player who succeeds in placing three of their marks in a horizontal, vertical, or diagonal row wins the game.
+Jogo da velha (também conhecido como *Tic-tac-toe*, zeros e cruzes ou Xs e Os) é um jogo para dois jogadores, X e O, que se revezam marcando os espaços em uma grade 3×3. O jogador que conseguir colocar três de suas marcas em uma linha horizontal, vertical ou diagonal ganha o jogo.
 
 
-
-## More Advanced Tic Tac Toe
-A relatively simple game usually played on a grid of 3 x 3 squares, tic-tac-toe is mainly enjoyed by children. Tic-tac-toe can be made significantly more complex by increasing the size of the board to 4 x 4, 5 x 5, or even up to a 20 x 20 grid.
-
+## Tic Tac Toe Mais Avançado
+Um jogo relativamente simples é jogado geralmente em uma grade de 3x3 quadrados. O Jogo da Velha é apreciado principalmente por crianças. Ele pode ser significativamente mais complexo ao aumentar o tamanho do tabuleiro para 4x4, 5x5 ou até 20 x 20.
 
 
-## Gameplay
-The goal of tic-tac-toe is to be the first player to get three in a row on a 3 x 3 grid, or four in a row in a 4 x 4 grid.  
+## Jogabilidade
+O objetivo do Jogo da Velha é ser o primeiro jogador a obter três marcas seguidas em uma grade de 3x3, ou quatro em sequência para uma grade de 4x4.
 
-To start, one player draws a board, creating a grid of squares, usually 3 x 3 or 4 x 4.
+Para começar: um jogador desenha um tabuleiro criando uma grade de quadrados - geralmente 3x3 ou 4x4.
 
-The player who is playing "X" always goes first. Players alternate placing Xs and Os on the board until either one player has three in a row, horizontally, vertically, or diagonally; or all nine squares are filled.
+O jogador que está jogando "X" sempre vai primeiro. Os jogadores alternam colocando Xs e Os no tabuleiro até que um jogador tenha três seguidos, horizontalmente, verticalmente ou diagonalmente; ou se todos os nove quadrados estão preenchidos.
 
-If a player is able to draw three of their Xs or three of their Os in a row, then that player wins.
+Se um jogador é capaz de sacar três de seus Xs ou três de seus O seguidos, então aquele jogador ganha.
+
+## A fazer
+
+- mudar ASCII-art do banner
+- traduzir jogo completamente
+- ajustar temporização
 
 
+## Agradecimentos
+
+- Professor Grinaldo Lopes por me motivar a fazer esse programinha para a disciplina ENG434 (Redes de Computadores) no IFBA Campus Salvador
+- [Akhand Pratap Singh](https://github.com/arten1337) pela lógica de jogo simplificada e muito fácil de ler!
