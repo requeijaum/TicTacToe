@@ -4,6 +4,12 @@ import textwrap
 import socket
 import threading
 
+# Dicas
+# print() -> ver apenas no servidor
+# imprimir() -> enviar para o cliente e mostrar no servidor
+
+
+
 # globais
 score       = []                        # Create a global score object
 s           = socket.socket()           # Create a global socket object
@@ -15,7 +21,7 @@ data_recv = ""
 data_send = ""
 game_condition = False
 
-msg = ""                        # enviar ao cliente
+msg = "Testando 1234"           # enviar ao cliente - mensagem inicial não-nula
 recv = ""                       # recebido do cliente
 
 thread_list = {
@@ -31,7 +37,7 @@ def createServerSocket(s):
 
     # s = socket.socket()       # Create a socket object
     host = '127.0.0.1'          # socket.gethostname() # Get local machine name
-    port = 50777                # Reserve a port for your service.
+    port = 50790                # Reserve a port for your service.
 
     print('Server started!')
     print("HOST: ", host, ":", str(port))
@@ -42,12 +48,13 @@ def createServerSocket(s):
 
     # print('Got connection from', (host,str(port)))
     # print("Para sair use CTRL+X\n")
-    print("\nPlayer X --> Servidor\nPlayer O --> Cliente\n")
+    imprimir("\nPlayer X --> Servidor\nPlayer O --> Cliente\n")
     #time.sleep(5)
     #input("\nAperte qualquer tecla para continuar...")
 
 
-def fiddleSocket(s):
+def fiddleSocket():
+    global s
     global game_condition
     global thread_list
     global msg  # criar ponteiro automaticamente
@@ -98,7 +105,8 @@ def novoCliente():
         print(addr, ' >> ', recv)
 
         #debug
-        enviarCliente()
+        #enviarCliente()
+        imprimir("memes")
 
         #if not data_received: break        
         #do some checks and if msg == someWeirdSignal: break:
@@ -122,7 +130,7 @@ def enviarCliente() :
     
     c.send(msg.encode())
     
-    print(">> " + msg)
+    #print(msg)
     #exit  #forçar saída
 
 
@@ -147,11 +155,11 @@ def procurarClientes():
     global game_condition
     global thread_list
 
-    thread_list["fiddleSocket"] = threading.Thread(target=fiddleSocket , name="fiddleSocket", args=(s,) )
+    thread_list["fiddleSocket"] = threading.Thread(target=fiddleSocket , name="fiddleSocket", args=() )
 
     # comentei o Main para debuggar o socket
 
-    #thread_list["Main"]         = threading.Thread(target=Main , name="Main", args=() )
+    thread_list["Main"]         = threading.Thread(target=Main , name="Main", args=() )
 
     thread_list["fiddleSocket"].start()
     
@@ -162,8 +170,8 @@ def procurarClientes():
 
     # \/\/\/\/ comentei isso aqui tudo pra poder debuggar o socket... \/\/\/\/
 
-    #if game_condition == True : #and thread_list["Main"].is_alive() : #and type(thread_list["Main"]) == "Thread" :
-    #    thread_list["Main"].start()
+    if game_condition == True : #and thread_list["Main"].is_alive() : #and type(thread_list["Main"]) == "Thread" :
+        thread_list["Main"].start()
     
     
     
@@ -171,16 +179,16 @@ def procurarClientes():
 
 def full():
     if ' ' not in score:
-        print('\nThe game has resulted into a catgame. ( ͡° ͜ʖ ͡°)')
+        imprimir('\nThe game has resulted into a catgame. ( ͡° ͜ʖ ͡°)')
         return True
 
 
 def board_display(score):
-    print(' '+score[6], '|', score[7], '|', score[8])
-    print('---+---+---')
-    print(' '+score[3], '|', score[4], '|', score[5])
-    print('---+---+---')
-    print(' '+score[0], '|', score[1], '|', score[2])
+    imprimir(' '+score[6]+ ' | '+ score[7]+ ' | '+ score[8])
+    imprimir('---+---+---')
+    imprimir(' '+score[3]+ ' | '+ score[4]+ ' | '+ score[5])
+    imprimir('---+---+---')
+    imprimir(' '+score[0]+ ' | '+ score[1]+ ' | '+ score[2])
 
 
 def check(char, posi1, posi2, posi3):
@@ -214,7 +222,7 @@ def Main():
     global game_condition
     global score
 
-    # print('Tic Tac Toe\n'.center(70))
+    # imprimir('Tic Tac Toe\n'.center(70))
     banner = r'''
                 _____  _  ____     _____  ____  ____     _____  ____  _____
                 /__ __\/ \/   _\   /__ __\/  _ \/   _\   /__ __\/  _ \/  __/
@@ -322,8 +330,8 @@ if __name__ == '__main__':
     thread_list["buscadorClientes"]        = threading.Thread(target=procurarClientes   , name="procurarClientes", args=() )
 
     # verificar sessão válida para executar a lógica do jogo
-    thread_list["checkGameCondition"]      = threading.Thread(target=checkGameCondition , name="checkGameCondition" , args=() )
-    thread_list["checkGameCondition"].start()
+    #thread_list["checkGameCondition"]      = threading.Thread(target=checkGameCondition , name="checkGameCondition" , args=() )
+    #thread_list["checkGameCondition"].start()
 
     thread_list["socketCriado"].start()
     time.sleep(5) # aguardar uma thread iniciar...
