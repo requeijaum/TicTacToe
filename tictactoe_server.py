@@ -23,7 +23,11 @@ def limparTela():
 
 
 
-# globais
+# variáveis globais
+
+host = 'localhost'                      # socket.gethostname() # Saber o nome de host da máquina
+port = 50790                            # Reservar/alocar uma porta para o serviço
+
 
 banner = r'''
                  _____  _  ____     _____  ____  ____     _____  ____  _____
@@ -56,22 +60,29 @@ thread_list = {
 
 def createServerSocket(s):                  # Criar socket no servidor - chamar via thread
     global game_condition
-
-    host = 'ihack-de-rafael.local'          # socket.gethostname() # Get local machine name
-    port = 50790                            # Reserve a port for your service.
+    global host
+    global port
 
     print('Server started!')
     print("HOST: ", host, ":", str(port))
     print('Waiting for clients...')
 
-    s.bind((host, port))                    # Bind to the port
-    s.listen(5)                             # Now wait for client connection.
+    # colocar esse try dentro de um while para permitir tentativas sucessivas de subir o servidor
 
-    imprimir("\Jogador X --> Servidor\nJogador O --> Cliente\n")
+    try:
+        s.bind((host, port))                # Fazer bind da porta
+        s.listen(5)                         # Esperar conexão do cliente!
 
-    # esperar um pouco antes de chamar a thread que conecta o cliente com o servidor
-    #time.sleep(5)
-    #input("\nAperte qualquer tecla para continuar...")
+        imprimir("\nJogador X --> Servidor\nJogador O --> Cliente\n")
+
+        # esperar um pouco antes de chamar a thread que conecta o cliente com o servidor
+        #time.sleep(5)
+        #input("\nAperte qualquer tecla para continuar...")
+
+    except OSError :                        # caso o endereço ou porta não possa ser ofertado
+        print("Erro!!! Verificar se o endereço ou porta estão corretos!")
+        host = input("Entre com o nome de HOST para tentar novamente: ")
+        exit
 
 
 def fiddleSocket():                         # não passar parâmetro... precisamos referenciar os dados!
@@ -282,7 +293,7 @@ def Main():                                     # Função que contêm a lógica
 
     while game_condition :                      # Enquanto a condição de jogo for verdadeira... executar a lógica de jogo!
 
-        imprimir('\Em suas marcas...\nO jogo começará em 10 segundos.')
+        imprimir('\nEm suas marcas...\nO jogo começará em 10 segundos.')
         time.sleep(10)
 
         score = [' ']*9                         # iniciar tabuleiro e vetor de pontuação
@@ -373,13 +384,13 @@ def Main():                                     # Função que contêm a lógica
         msg = "O servidor está decidindo se ele quer jogar de novo..."
         enviarCliente()
         
-        again = input('\nDo you want to play again? Enter Yes or No: ')
-        if again.lower() == 'yes':
+        again = input('\nVocê quer jogar de novo? Entre com \"sim\" ou \"nao\": ')
+        if again.lower() == 'sim':
             continue
-        elif again.lower() == 'no':
+        elif again.lower() == 'nao':
             imprimir(" ")
-            imprimir('Thanks for playing TIC TAC TOE, do come again!!'.center(80))
-            imprimir('\nExiting in 3..')
+            imprimir('Obrigado por jogar!!! Volte sempre!!!'.center(80))
+            imprimir('\nSaindo em  3..')
             time.sleep(1)
             imprimir('           2..')
             time.sleep(1)
@@ -388,8 +399,8 @@ def Main():                                     # Função que contêm a lógica
             msg = "/cmd quit"
             enviarCliente()
             break
-        else:
-            imprimir('\nEnter a correct choice')
+        else:                       # verificar se esse ELIF tá correto!
+            imprimir('\nEntre uma escolha correta')
 
     exit
 
@@ -405,7 +416,9 @@ if __name__ == '__main__':
     # thread_list["checkGameCondition"]      = threading.Thread(target=checkGameCondition , name="checkGameCondition" , args=() )
     # thread_list["checkGameCondition"].start()
 
-    thread_list["socketCriado"].start()
+    thread_list["socketCriado"].start()         # iniciar createServerSocket(s)
+    thread_list["socketCriado"].join()          # verificar se deu tudo certo ao criar o socket do servidor
+
     time.sleep(5)                               # aguardar uma thread iniciar antes de buscar clientes
     thread_list["buscadorClientes"].start()
     
