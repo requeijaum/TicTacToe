@@ -4,28 +4,48 @@ import textwrap
 import socket
 import threading
 
+# verificar codificação de caracteres de acordo com a plataforma
+# ver simulador do IFBA
+
+
 # Dicas
 # print() -> ver apenas no servidor
 # imprimir() -> enviar para o cliente e mostrar no servidor
 
+# Como não utilizamos classes para criar instâncias de jogos:
+# só é possível sustentar uma sessão a cada par de jogadores.
+# a não ser que sejam executadas várias instâncias de servidor usando portas diferentes!
+
+# função de limpar tela universal - entre WinNT e POSIX (Linux, macOS)
+from platform import system as system_name
+def limparTela():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 
 
 # globais
-score       = []                        # Create a global score object
-s           = socket.socket()           # Create a global socket object
-c           = None                      # Create a global clientsocket instance
+
+banner = r'''
+                 _____  _  ____     _____  ____  ____     _____  ____  _____
+                /__ __\/ \/   _\   /__ __\/  _ \/   _\   /__ __\/  _ \/  __/
+                  / \  | ||  / _____ / \  | / \||  / _____ / \  | / \||  \
+                  | |  | ||  \_\____\| |  | |-|||  \_\____\| |  | \_/||  /_
+                  \_/  \_/\____/     \_/  \_/ \|\____/     \_/  \____/\____\ '''
+
+
+score       = []                        # Criar um vetor global de pontuação (score)
+s           = socket.socket()           # Criar um objeto global de socket
+c           = None                      # Criar uma instância global de socket do cliente - é um tuple: (c,addr)
 addr        = None
 
+game_condition = False                  # Variável global que armazena o estado de condição de um jogo - válido ou inválido - para sustentar a conexão
 
-data_recv = ""
-data_send = ""
-game_condition = False
-
-msg = "Testando 1234"           # enviar ao cliente - mensagem inicial não-nula
+msg = "Testando 1234"           # enviar ao cliente - mensagem inicial nunca pode ser nula, pois socket não envia algo com 0 bytes!
 recv = ""                       # recebido do cliente
 
-askPlayer2 = True
+askPlayer2 = True               # variável booleana que verifica se pode perguntar algo ao cliente (Jogador O - remoto)
 
+# dict que armazena as threads. Estou definindo elas aqui por boas-práticas.
 thread_list = {
     "socketCriado"              : None,
     "buscadorClientes"          : None,
@@ -34,56 +54,51 @@ thread_list = {
 
 }
 
-def createServerSocket(s):
+def createServerSocket(s):                  # Criar socket no servidor - chamar via thread
     global game_condition
 
-    # s = socket.socket()       # Create a socket object
     host = 'ihack-de-rafael.local'          # socket.gethostname() # Get local machine name
-    port = 50790                # Reserve a port for your service.
+    port = 50790                            # Reserve a port for your service.
 
     print('Server started!')
     print("HOST: ", host, ":", str(port))
     print('Waiting for clients...')
 
-    s.bind((host, port))        # Bind to the port
-    s.listen(5)                 # Now wait for client connection.
+    s.bind((host, port))                    # Bind to the port
+    s.listen(5)                             # Now wait for client connection.
 
-    # print('Got connection from', (host,str(port)))
-    # print("Para sair use CTRL+X\n")
-    imprimir("\nPlayer X --> Servidor\nPlayer O --> Cliente\n")
+    imprimir("\Jogador X --> Servidor\nJogador O --> Cliente\n")
+
+    # esperar um pouco antes de chamar a thread que conecta o cliente com o servidor
     #time.sleep(5)
     #input("\nAperte qualquer tecla para continuar...")
 
 
-def fiddleSocket():
+def fiddleSocket():                         # não passar parâmetro... precisamos referenciar os dados!
     global s
     global game_condition
     global thread_list
-    global msg  # criar ponteiro automaticamente
+    global msg                              # o Python3 vai criar um ponteiro automaticamente - precisamos usar a variável global "msg"
     global c
     global addr
 
-    #while msg != '\x18':
-    #game_condition = True
+    c, addr = s.accept()                    # Estabelecer conexão com o cliente!
+    game_condition = True                   # E mudar a condição de jogo para válida!
 
-    #while game_condition = True:
-    c, addr = s.accept()     # Establish connection with client.
-    game_condition = True
-
+    # declarar thread que instancia um novo cliente conectado - e iniciar assim que possível!
     thread_list["novoCliente"]      = threading.Thread(target=novoCliente   , name="novoCliente" , args=() )
-    #thread_list["enviarCliente"]    = threading.Thread(target=enviarCliente , name="enviarCliente" , args=() )    # este msg precisa apontar para o msg global
-    
     thread_list["novoCliente"].start()
-    #thread_list["enviarCliente"].start()  # não enviar agora!
 
+    # caso a thread esteja viva e funcionando: entre no processo e verifique quando ele vai parar - detectar encerramento da thread com join()
     if thread_list["novoCliente"].is_alive():
-        thread_list["novoCliente"].join()
+        thread_list["novoCliente"].join()   # essa thread pode mudar o game_condition
 
-    if game_condition == False : 
+
+    if game_condition == False :            # caso algo dê errado no jogo: feche o socket!
         s.close()
 
 
-def checkGameCondition() :
+def checkGameCondition() :                  # Função para DEBUGGING da thread que verifica se o jogo ainda é válido e a conexão deve persistir
     global game_condition
 
     while True :
@@ -98,126 +113,95 @@ def novoCliente():
     global c
     global addr
 
-    #first setup
+    # precisamos de uma string não nula no estado inicial
     msg = "Olá!"
 
-    while True:
-        time.sleep(0.1)   # tentar encher buffer? serve pra escrever \n corretamente - no cliente5
-        try:
+    while True :    # loop infinito
+
+        # esse delay aqui é muito importante para não causar 100% de uso da CPU ao processar mensagens!
+        time.sleep(0.1)   # tentar encher buffer? serve pra escrever \n corretamente - no cliente
+
+        try:                                    # tentar receber algo do socket... se vier vazio: rode "except"
             data_received = c.recv(1024)
             pass
 
-        except:
+        except:                                 # caso não consiga receber... suba uma exceção e avise que deu erro antes de sair do jogo!
             print("Ocorreu um erro ao processar o comando recebido!")
             exit
 
-        if len(data_received.decode()) > 0:
+
+        if len(data_received.decode()) > 0:     # decodificar fluxo de bytes para string. Caso a string resultante não seja vazia:
             recv = data_received.decode()
-            if recv != "invalido":
-                print(addr, ' >> ', recv)
-        
 
-        #debug
-        #enviarCliente()
-        #imprimir("")
+            if recv != "invalido":              # string utilizada para controle de fluxo entre servidor e cliente
+                print(addr, ' >> ', recv)       # caso o servidor receba "invalido": não imprima na tela. Essa mensagem é inútil para os jogadores.
+    
 
-        #if not data_received: break        
-        #do some checks and if msg == someWeirdSignal: break:
-        
-        
-
-        #msg = input('SERVER >> ')
-        
-        #Maybe some code to compute the last digit of PI, play game or anything else can go here and when you are done.
-        
-        #c.send(msg.encode())
-
-    c.close()
+    # a partir daqui: significa que o socket do cliente foi encerrado e o servidor não irá receber mais dados!
+    c.close()   
     print("\nQue feio, servidor! O cliente saiu do jogo!\n")
-    game_condition = False
+    game_condition = False                      # sem cliente: sem jogo!
 
 
-def enviarCliente() :
-    global msg         # usar argumento
+def enviarCliente() :                           # Função para enviar mensagens ao cliente!
+
+    global msg                                  # usar argumento
     global c
     
     try:
-        time.sleep(0.5) # na verdade a magica da impressao e envio de dados fica aqui... ajustar pra esse valor sempre funciona
-        #print(str(type(c)))
+        time.sleep(0.5)                         # delay utilizado para controlar o uso de CPU ao enviar mensagens... não pode ser muito rápido!
+                                                # se for muito rápido: o cliente pode errar a quebra de linhas e mostrar texto mal-formatado
+                                                # ajustar pra esse valor ajuda a resolver problemas no cliente
         
-        if type(c) != type(None) :
-            c.send(msg.encode())
+
+        if type(c) != type(None) :              # Verificar se o socket do cliente está "nulo". 
+            c.send(msg.encode())                # O servidor pode tentar enviar algo ao cliente sem um socket conectado!
         
         pass
 
     except:
-        print("\nDEBUG: Algum erro ocorreu ao processar o envio...\n")
+        print("\nDEBUG: Algum erro ocorreu ao processar o envio...\n") 
         pass
 
-    '''
-    print(getattr(s, "getpeername"))
 
-    if not type(c) == "NoneType" : 
-        if getattr(s, "getpeername") :
-            c.send(msg.encode())
-        else:
-            print("Não foi possível enviar: " + msg)
-    else :
-        print("\n>> Calma! O socket ainda não foi instanciado!\n")
-        #print(msg)
-        #exit  #forçar saída
-    '''
-
-def imprimir(texto):
-    global msg
+def imprimir(texto):                            # Função que imprime texto para o cliente e para o servidor!
+    global msg                                  # Precisamos referenciar a mensagem que será enviada para o cliente.
     msg = texto
+
     enviarCliente()
-    
-    #if thread_list["enviarCliente"].is_alive() :
-    #    thread_list["enviarCliente"].join()
-    #else: 
-    #    thread_list["enviarCliente"].start()  # mudou msg pra texto e roda
-
-    #thread_list["enviarCliente"].join() # redundancia pra verificar se a thread acabou
-
-        
     print(texto)
 
 
 
-def procurarClientes():
+def procurarClientes():                         # Função para ser utilizada na thread que procura por conexões válidas antes de iniciar a lógica do jogo
     global game_condition
     global thread_list
 
+    # declarar thread para a função que faz-tudo pelo cliente "fiddleSocket()" - e declarar thread para lógica do jogo em "Main()"
     thread_list["fiddleSocket"] = threading.Thread(target=fiddleSocket , name="fiddleSocket", args=() )
-
-    # comentei o Main para debuggar o socket
-
     thread_list["Main"]         = threading.Thread(target=Main , name="Main", args=() )
 
-    thread_list["fiddleSocket"].start()
+    thread_list["fiddleSocket"].start()         # iniciar interação por socket
     
 
-    while game_condition == False:
+    while game_condition == False:              # verifica a condição de jogo periodicamente.
         print("\n Não encontramos clientes disponiveis...")
         time.sleep(3)
 
-    # \/\/\/\/ comentei isso aqui tudo pra poder debuggar o socket... \/\/\/\/
 
-    if game_condition == True : #and thread_list["Main"].is_alive() : #and type(thread_list["Main"]) == "Thread" :
+    if game_condition == True :                 # a condição de jogo é válida! Vamos jogar!
         thread_list["Main"].start()
     
     
-    
 
-
-def full():
+def full():                                     # Função que verifica se todas as casas 3x3 estão preenchidas
     if ' ' not in score:
-        imprimir('\nThe game has resulted into a catgame. ( ͡° ͜ʖ ͡°)')
+        imprimir('\nO jogo resultou em um empate... jogo de gato e rato!\n( ͡° ͜ʖ ͡°)')
         return True
 
 
-def board_display(score):
+def board_display(score):                       # Função que imprime o tabuleiro. Recebe o vetor "score" como parâmetro.
+    
     imprimir(' '+score[6]+ ' | '+ score[7]+ ' | '+ score[8] )#+ "\n")
     imprimir('---+---+---'  )#+ "\n")   
     imprimir(' '+score[3]+ ' | '+ score[4]+ ' | '+ score[5] )#+ "\n")
@@ -225,12 +209,14 @@ def board_display(score):
     imprimir(' '+score[0]+ ' | '+ score[1]+ ' | '+ score[2] )#+ "\n")
 
 
-def check(char, posi1, posi2, posi3):
+def check(char, posi1, posi2, posi3):           # Função que verifica posições e caracteres válidos dentro de uma linha do tabuleiro (3x3)
+                                                # Serve para verificar que uma linha foi completada por um dos jogadores.
+
     if score[posi1] == char and score[posi2] == char and score[posi3] == char:
         return True
 
 
-def checkall(char):
+def checkall(char):                             # Algoritmo que verifica todas as linhas possíveis que podem ser feitas no tabuleiro
     if check(char, 0, 1, 2):
         return True
     if check(char, 3, 4, 5):
@@ -250,13 +236,20 @@ def checkall(char):
     return False
 
 
-def comandoSistema(cmd):
+def comandoSistema(cmd):                        # Função que executa um comando do sistema em ambos cliente e servidor
     global msg
     msg = "/cmd " + cmd
     enviarCliente()
-    os.system(cmd)
 
-def Main():
+    if cmd != "clear" or cmd != "cls" :         # verificar condição de limpar tela... de acordo com o sistema operacional
+        os.system(cmd)
+
+    else:
+        limparTela()
+
+
+def Main():                                     # Função que contêm a lógica principal do jogo.
+                                                # Deve ser invocada usando uma thread.
 
     global thread_list
     global game_condition
@@ -264,18 +257,14 @@ def Main():
     global msg
     global recv
     global askPlayer2
+    global banner
 
     comandoSistema("clear")
     # imprimir('Tic Tac Toe\n'.center(70))
-    banner = r'''
-                 _____  _  ____     _____  ____  ____     _____  ____  _____
-                /__ __\/ \/   _\   /__ __\/  _ \/   _\   /__ __\/  _ \/  __/
-                  / \  | ||  / _____ / \  | / \||  / _____ / \  | / \||  \
-                  | |  | ||  \_\____\| |  | |-|||  \_\____\| |  | \_/||  /_
-                  \_/  \_/\____/     \_/  \_/ \|\____/     \_/  \____/\____\ '''
-
+    
     imprimir(banner)
-    imprimir('\nThe board is numbered in the form of the numpad keyboard as printed below.\n')
+    imprimir('\nO tabuleiro é numerado em forma de teclado numérico, conforme impresso abaixo.\n')
+
     time.sleep(0.01)
     score = ['1', '2', '3',
             '4', '5', '6',
@@ -283,93 +272,95 @@ def Main():
 
     board_display(score)
 
-    value = '\nThe object of Tic Tac Toe is to get three in a row. You play on a three by three game board. The first player is known as X and the second is O. Players alternate placing Xs and Os on the game board until either opponent has three in a row or all nine squares are filled. X always goes first, and in the event that no one has three in a row, the stalemate is called a cat game.'
+    # imprimir instruções de jogo de forma estilizada com quebra de linha automática em 72 caracteres
+    value = '\nO objetivo do Jogo da Velha é obter três marcas em linha. Você joga em um tabuleiro de três por três. O primeiro jogador é conhecido como X e o segundo é O. Os jogadores alternam colocando Xs e Os no tabuleiro até que um dos oponentes tenha três em sequência ou todos os nove quadrados estejam preenchidos. X sempre vai primeiro. No caso de ninguém ter três em linha, o empate é chamado de jogo de gato!\n'
     wrapper = textwrap.TextWrapper(width=72)
     string = wrapper.fill(text=value)
-    imprimir('\n' )
+    
+    #imprimir('\n' )
     imprimir(string)
 
-    while game_condition :
+    while game_condition :                      # Enquanto a condição de jogo for verdadeira... executar a lógica de jogo!
 
-        imprimir('\nChoose your cells accordingly.\nThe game will begin in 10 seconds.')
+        imprimir('\Em suas marcas...\nO jogo começará em 10 segundos.')
         time.sleep(10)
 
-        score = [' ']*9
-        while True:
+        score = [' ']*9                         # iniciar tabuleiro e vetor de pontuação
+
+        while True:                             # loop infinito
+
             comandoSistema('clear')
             board_display(score)
-            if full():                
+                                                # parar o jogo...    
+            if full():                          # caso o tabuleiro não tenha células vazias!
+                break                           # caso a thread de conexão não esteja rodando!
+            if not thread_list["novoCliente"].is_alive():       
                 break
-            if not thread_list["novoCliente"].is_alive():       # controle de sessão!
-                #player2 = ""
-                break
-            while True:
-                try:
-                    msg = "Waiting Player X"
+
+            while True:                         # loop infinito
+                try:                            # explicar essa porra
+                    msg = "Esperando Jogador X"
                     enviarCliente()
                     player1 = int(input('\nPlayer X, choose your position: '))
                     if score[player1-1] != 'X' and score[player1-1] != 'O':
                         score[player1-1] = 'X'
                         break
                     else:
-                        imprimir('\nThis position is already taken, please try again.')
-                        #continue
+                        imprimir('\nEssa posição já foi escolhida! Por favor, tente novamente.')
                         break
                 except:
-                    imprimir('\nKindly enter a valid value')
+                    imprimir('\nPor favor... entre um valor válido...')
                     continue
             comandoSistema('clear')
             board_display(score)
             if checkall('X'):
-                imprimir('\nPlayer X is the winner')
+                imprimir('\nJogador X é o vencedor!')
                 time.sleep(0.1)
                 break
             if full():
                 break
-            #special stuff
-            print("\n\n > Waiting player O")    
+            # mostrar que está esperando o cliente remoto fazer a jogada
+            print("\n\n>> Esperando Jogador O...")    
             
-            while askPlayer2:
+            while askPlayer2:                   # enquanto for o momento de interagir com o cliente e esperar uma entrada de dados dele...
                 try:
-                    while len(recv) < 1 : #or recv == "invalido" :   # a mágica está aqui e em recv = "invalido"
-                        #print("\n\n > Waiting player O")
+                    while len(recv) < 1 :       # explicar essa mágica
                         time.sleep(3)
-                        #time.sleep()
-                        #continue
-
-                    #player2 = int(input('\nPlayer O, choose your position: '))
-                    msg = "\nPlayer O, choose your position: "
+                        
+                    msg = "\nJogador O, escolha sua posição: "
                     enviarCliente()
-                    time.sleep(5)
+                    time.sleep(5)               # outro delay?
+
                     #print("DEBUG: recv = " + recv)
-                    #if len(recv) > 0 and int(recv) in [0,1,2,3,4,5,6,7,8,9] :
                     if len(recv) == 1:
                         player2 = int(recv)
 
-
+                        # caso seja um valor numérico válido de jogada...
 
                         if score[player2-1] != 'X' and score[player2-1] != 'O':
                             score[player2-1] = 'O'
                             break
                         else:
                             if len(recv) == 0 or len(recv) == 1 :
-                                imprimir('\nThis position ' + str(recv) + ' is already taken, please try again.')
-                                #time.sleep(5)
+                                imprimir('\nA posição \"' + str(recv) + '\" já foi marcada! Por favor, tente novamente.')
+                                
                             continue
 
                         break
-                    #recv = "100"    # setar pra um valor fora do escopo [0-9]... tem que ser um número. Nunca pode ser uma string vazia!
-                    #break
-                    pass  # talvez isso quebre tudo!
+                        
+                    pass  # talvez isso quebre tudo! # explicar essa porra
+
+
                 except:
-                    #if len(recv) == 0 : 
                     imprimir('\nKindly enter a valid value - not ' + str(recv))
-                    #time.sleep(5)
                     continue
+
+
             comandoSistema('clear')
             board_display(score)
+
             if checkall('O'):
-                imprimir('\nPlayer O is the winner')
+                imprimir('\nJogador O é o vencedor!')
                 time.sleep(0.1)
                 break
             if full():
@@ -378,8 +369,10 @@ def Main():
         # forçar fechar socket
         if thread_list["novoCliente"].is_alive() :
             s.close()
+        
         msg = "O servidor está decidindo se ele quer jogar de novo..."
         enviarCliente()
+        
         again = input('\nDo you want to play again? Enter Yes or No: ')
         if again.lower() == 'yes':
             continue
@@ -404,16 +397,16 @@ def Main():
 
 if __name__ == '__main__': 
 
-    # declarar threads - nitratine.net...
+    # declarar threads - segundo: https://nitratine.net/blog/post/python-threading-basics/
     thread_list["socketCriado"]            = threading.Thread(target=createServerSocket , name="createServerSocket", args=(s,) )
     thread_list["buscadorClientes"]        = threading.Thread(target=procurarClientes   , name="procurarClientes", args=() )
 
-    # verificar sessão válida para executar a lógica do jogo
-    #thread_list["checkGameCondition"]      = threading.Thread(target=checkGameCondition , name="checkGameCondition" , args=() )
-    #thread_list["checkGameCondition"].start()
+    # DEBUGGING de sessão válida para executar a lógica do jogo
+    # thread_list["checkGameCondition"]      = threading.Thread(target=checkGameCondition , name="checkGameCondition" , args=() )
+    # thread_list["checkGameCondition"].start()
 
     thread_list["socketCriado"].start()
-    time.sleep(5) # aguardar uma thread iniciar...
+    time.sleep(5)                               # aguardar uma thread iniciar antes de buscar clientes
     thread_list["buscadorClientes"].start()
     
     quit

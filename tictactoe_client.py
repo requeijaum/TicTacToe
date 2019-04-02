@@ -1,6 +1,11 @@
-import time
-import os
+import os, time
 import socket
+
+# função de limpar tela universal - entre WinNT e POSIX (Linux, macOS)
+from platform import system as system_name
+def limparTela():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 
 podeConectar = False
 
@@ -41,11 +46,10 @@ def interagirSocket():
 
     print("Você disse '" + msg + "' para o servidor...")
 
-    while True: #(msg != '\x18') or (msg != "/kick " + nomeJogador) :            # respeitar ordem correta de operações para não dar merda
+    while True:         # respeitar ordem correta de operações para não dar problema
         time.sleep(0.5) # escrever linhas de forma organizada e sem cagar tudo
-        # envia qualquer coisa
-        #if len(msg) > 0 : #and msg != msg_inicial :
-        #if len(msg) == 1 and int(msg) in [0,1,2,3,4,5,6,7,8,9] :
+                        # envia qualquer coisa
+        
         try:
             tcp.send(msg.encode())      # send() ou sendall()
             pass
@@ -54,17 +58,12 @@ def interagirSocket():
             print("Conexão quebrada! Reinicie o cliente!")
             exit
     
-        msg = "invalido"
-        #msg = "limpo"    # limpar msg , None, "" ou "10"
-
+        msg = "invalido"                # um controle de fluxo simples ;-)
 
         data_received = tcp.recv(1024)
         recv = data_received.decode()
         if len(recv) > 0:
             print(recv)
-
-        #tcp.send (msg.encode())
-        #msg = input(">> ")
 
         if "/cmd " in recv :
             verb = recv.split("/cmd ")[1]
@@ -77,19 +76,20 @@ def interagirSocket():
                 print(e)
 
 
+            # condicionais específicas
+            if verb == "cls" or "clear" :
+                limparTela()
+
             if verb == "quit" :
                 tcp.close()
                 exit
 
-        #limpar coisas
-        #msg = ""
-        #recv = ""
-            
-    
+
+# criar threads    
 import threading
 thread_list = {}
 
-
+# nosso querido entrypoint - especificar para o Python3 executar mais rapidamente
 if __name__ == '__main__': 
 
     # declarar threads
@@ -101,11 +101,14 @@ if __name__ == '__main__':
         thread_list["capturarEntrada"].start()
         thread_list["interagirSocket"].start()
 
+        # DEBUG
         #while True:
         #    thread_list["capturarEntrada"].join(timeout=3)
 
-
     # fim da condicional de conexao valida com servidor!
 
-    #tcp.close()
+    # não existe como matar threads no Python. 
+    # É necessário usar threading.join() e esperar que a thread conclua suas atividades.
+
+    #tcp.close()    # não encerrar aqui... usar a thread!
     quit
