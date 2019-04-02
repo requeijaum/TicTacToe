@@ -31,13 +31,14 @@ except ConnectionRefusedError:
 def capturarEntrada() :
     global msg
     
-    while True:
+    while podeConectar :
         msg = input(">> ")
 
 
 def interagirSocket():
     global msg
     global tcp
+    global podeConectar
 
     print("Para sair use CTRL+X\n")
 
@@ -54,35 +55,55 @@ def interagirSocket():
             tcp.send(msg.encode())      # send() ou sendall()
             pass
 
+
         except BrokenPipeError:
             print("Conexão quebrada! Reinicie o cliente!")
-            exit
+            podeConectar = False
+            exit()
     
         msg = "invalido"                # um controle de fluxo simples ;-)
 
-        data_received = tcp.recv(1024)
+        try:
+            data_received = tcp.recv(1024)
+        
+        except ConnectionResetError:    # caso a conexão caia durante o recebimento do socket...
+            print("Conexão reiniciada! Reinicie o cliente!")
+            podeConectar = False
+            exit()
+
+        
         recv = data_received.decode()
         if len(recv) > 0:
-            print(recv)
+            #print(recv)
+            print("")
 
         if "/cmd " in recv :
             verb = recv.split("/cmd ")[1]
             
             try:
-                os.system(verb)
+
+                # condicionais específicas
+                if verb == "input" :
+                    print("\nEntre com a posição desejada: ")
+                    recv = "."
+                    time.sleep(3)
+
+                if verb == "cls" or verb == "clear" :
+                    limparTela()
+
+                if verb == "quit" :
+                    tcp.close()
+                    podeConectar = False
+                    exit()
+
+                #else:
+                #    os.system(verb)
+
 
             except OSError as e:
                 print("Comando não encontrado!")
                 print(e)
 
-
-            # condicionais específicas
-            if verb == "cls" or "clear" :
-                limparTela()
-
-            if verb == "quit" :
-                tcp.close()
-                exit
 
 
 # criar threads    
@@ -110,5 +131,13 @@ if __name__ == '__main__':
     # não existe como matar threads no Python. 
     # É necessário usar threading.join() e esperar que a thread conclua suas atividades.
 
-    #tcp.close()    # não encerrar aqui... usar a thread!
-    quit
+    '''
+    if not thread_list["interagirSocket"].is_alive() :
+        tcp.close()
+        quit
+
+    else :
+        thread_list["interagirSocket"].join()
+    '''
+
+    # exit()

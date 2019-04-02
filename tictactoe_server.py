@@ -25,7 +25,7 @@ def limparTela():
 
 # variáveis globais
 
-host = 'localhost'                      # socket.gethostname() # Saber o nome de host da máquina
+host = socket.gethostname()             #'localhost' ou socket.gethostname() --> Saber o nome de host da máquina
 port = 50790                            # Reservar/alocar uma porta para o serviço
 
 
@@ -119,6 +119,7 @@ def checkGameCondition() :                  # Função para DEBUGGING da thread 
 
 def novoCliente():
     global game_condition
+    global askPlayer2
     global recv
     global msg
     global c
@@ -138,7 +139,9 @@ def novoCliente():
 
         except:                                 # caso não consiga receber... suba uma exceção e avise que deu erro antes de sair do jogo!
             print("Ocorreu um erro ao processar o comando recebido!")
-            exit
+            askPlayer2 = False
+            game_condition = False
+            break
 
 
         if len(data_received.decode()) > 0:     # decodificar fluxo de bytes para string. Caso a string resultante não seja vazia:
@@ -156,9 +159,11 @@ def novoCliente():
 
 def enviarCliente() :                           # Função para enviar mensagens ao cliente!
 
-    global msg                                  # usar argumento
+    global msg                                  # usar variavel global ou argumento?
     global c
-    
+    global game_condition
+    global askPlayer2
+
     try:
         time.sleep(0.5)                         # delay utilizado para controlar o uso de CPU ao enviar mensagens... não pode ser muito rápido!
                                                 # se for muito rápido: o cliente pode errar a quebra de linhas e mostrar texto mal-formatado
@@ -166,8 +171,20 @@ def enviarCliente() :                           # Função para enviar mensagens
         
 
         if type(c) != type(None) :              # Verificar se o socket do cliente está "nulo". 
-            c.send(msg.encode())                # O servidor pode tentar enviar algo ao cliente sem um socket conectado!
+            try:
+                c.send(msg.encode())                # O servidor pode tentar enviar algo ao cliente sem um socket conectado!
         
+            #except Exception as e:
+            #    print(e)                    # subir Exception e ver na tela
+
+            except BrokenPipeError:
+                c.close()                   # forçar parada do socket do cliente - está quebrado!
+                quit
+            
+            except OSError :
+                game_condition = False
+                askPlayer2 = False
+                quit
         pass
 
     except:
@@ -282,9 +299,10 @@ def Main():                                     # Função que contêm a lógica
             '7', '8', '9']
 
     board_display(score)
-
+    imprimir("\n")
+    
     # imprimir instruções de jogo de forma estilizada com quebra de linha automática em 72 caracteres
-    value = '\nO objetivo do Jogo da Velha é obter três marcas em linha. Você joga em um tabuleiro de três por três. O primeiro jogador é conhecido como X e o segundo é O. Os jogadores alternam colocando Xs e Os no tabuleiro até que um dos oponentes tenha três em sequência ou todos os nove quadrados estejam preenchidos. X sempre vai primeiro. No caso de ninguém ter três em linha, o empate é chamado de jogo de gato!\n'
+    value = '\n\nO objetivo do Jogo da Velha é obter três marcas em linha. Você joga em um tabuleiro de três por três. O primeiro jogador é conhecido como X e o segundo é O. Os jogadores alternam colocando Xs e Os no tabuleiro até que um dos oponentes tenha três em sequência ou todos os nove quadrados estejam preenchidos. X sempre vai primeiro. No caso de ninguém ter três em linha, o empate é chamado de jogo de gato!\n'
     wrapper = textwrap.TextWrapper(width=72)
     string = wrapper.fill(text=value)
     
@@ -310,9 +328,9 @@ def Main():                                     # Função que contêm a lógica
 
             while True:                         # loop infinito
                 try:                            # explicar essa porra
-                    msg = "Esperando Jogador X"
+                    msg = "\n>> Esperando Jogador X"
                     enviarCliente()
-                    player1 = int(input('\nPlayer X, choose your position: '))
+                    player1 = int(input('\nJogador X, escolha sua posição: '))
                     if score[player1-1] != 'X' and score[player1-1] != 'O':
                         score[player1-1] = 'X'
                         break
@@ -320,7 +338,7 @@ def Main():                                     # Função que contêm a lógica
                         imprimir('\nEssa posição já foi escolhida! Por favor, tente novamente.')
                         break
                 except:
-                    imprimir('\nPor favor... entre um valor válido...')
+                    print('\nPor favor... entre um valor válido...')            # mensagem exclusiva ao Jogador X
                     continue
             comandoSistema('clear')
             board_display(score)
@@ -333,18 +351,36 @@ def Main():                                     # Função que contêm a lógica
             # mostrar que está esperando o cliente remoto fazer a jogada
             print("\n\n>> Esperando Jogador O...")    
             
+            contarPergunta = 0
             while askPlayer2:                   # enquanto for o momento de interagir com o cliente e esperar uma entrada de dados dele...
                 try:
-                    while len(recv) < 1 :       # explicar essa mágica
-                        time.sleep(3)
+                    #while len(recv) < 1 :       # explicar essa mágica
+                    #    time.sleep(3)
+                      
+                    if len(recv) != 1:          # acho que vai quebrar a mágica
+                        #msg = "\nJogador O, escolha sua posição: "
+                        msg = "/cmd input"
                         
-                    msg = "\nJogador O, escolha sua posição: "
+                    else: 
+                        msg = "."
+                    
+
+                    if contarPergunta < 1 :
+                        enviarCliente()
+                        contarPergunta = contarPergunta + 1   
+
+                    else:
+                        msg = " . "                 
+                    
                     enviarCliente()
-                    time.sleep(5)               # outro delay?
+                    time.sleep(1)               # outro delay?
 
                     #print("DEBUG: recv = " + recv)
-                    if len(recv) == 1:
+                    if len(recv) == 1 : # and (int(recv) in [0,1,2,3,4,5,6,7,8,9]) :
+                        #msg = "."        # tentar limpar msg pra não cometer erro por redundância
                         player2 = int(recv)
+                        contarPergunta = 0
+                        
 
                         # caso seja um valor numérico válido de jogada...
 
@@ -359,11 +395,17 @@ def Main():                                     # Função que contêm a lógica
 
                         break
                         
+                    
+                    if len(recv) != 1 and recv != "invalido" :  # nunca verificar nada contra a string "invalido" a ser recebida
+                        imprimir('\nNEW: Por favor... entre um valor válido... e não \"' + str(recv) + '\" ')
+                        continue    # forçar ir ao pass do try? Não!
+
                     pass  # talvez isso quebre tudo! # explicar essa porra
 
 
-                except:
-                    imprimir('\nKindly enter a valid value - not ' + str(recv))
+                except Exception as e :
+                    print(e)
+                    #imprimir('\nOLD: Por favor... entre um valor válido... e não \"' + str(recv) + '\" ' )
                     continue
 
 
@@ -387,7 +429,7 @@ def Main():                                     # Função que contêm a lógica
         again = input('\nVocê quer jogar de novo? Entre com \"sim\" ou \"nao\": ')
         if again.lower() == 'sim':
             continue
-        elif again.lower() == 'nao':
+        elif again.lower() == 'nao' or not thread_list["novoCliente"].is_alive() :
             imprimir(" ")
             imprimir('Obrigado por jogar!!! Volte sempre!!!'.center(80))
             imprimir('\nSaindo em  3..')
@@ -422,4 +464,5 @@ if __name__ == '__main__':
     time.sleep(5)                               # aguardar uma thread iniciar antes de buscar clientes
     thread_list["buscadorClientes"].start()
     
-    quit
+
+        

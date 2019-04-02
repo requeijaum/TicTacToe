@@ -28,6 +28,7 @@ Se um jogador é capaz de sacar três de seus Xs ou três de seus O seguidos, en
 - verificar comportamento no Windows
     > comandos cls e clear
     > encoding do sistema
+- resolver bug que ocorre ao jogar novamente na mesma sessão
 
 ## Agradecimentos
 
