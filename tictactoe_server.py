@@ -3,6 +3,7 @@ import os
 import textwrap
 import socket
 import threading
+import random
 
 # verificar codificação de caracteres de acordo com a plataforma
 # ver simulador do IFBA
@@ -17,10 +18,30 @@ import threading
 # a não ser que sejam executadas várias instâncias de servidor usando portas diferentes!
 
 # função de limpar tela universal - entre WinNT e POSIX (Linux, macOS)
-from platform import system as system_name
-def limparTela():
-    os.system('cls' if os.name == 'nt' else 'clear')
+from platform import system as system_name 
 
+print("Sistema Operacional: " + os.name)
+time.sleep(1)
+
+import locale
+if os.name == "nt":
+    
+    def getpreferredencoding(do_setlocale = True):
+        return "cp1252"
+
+    locale.getpreferredencoding = getpreferredencoding
+    
+
+print("Locale: " + locale.getpreferredencoding())
+time.sleep(2)
+
+
+def limparTela():
+    if os.name == 'nt':         # existe um bug
+        print("\r\n" * 24)
+
+    else:
+        os.system("clear")
 
 
 # variáveis globais
@@ -63,9 +84,10 @@ def createServerSocket(s):                  # Criar socket no servidor - chamar 
     global host
     global port
 
-    print('Server started!')
+    print("\r\n")
+    print('Servidor iniciado!')
     print("HOST: ", host, ":", str(port))
-    print('Waiting for clients...')
+    print('Esperando conexão do cliente...')
 
     # colocar esse try dentro de um while para permitir tentativas sucessivas de subir o servidor
 
@@ -73,11 +95,11 @@ def createServerSocket(s):                  # Criar socket no servidor - chamar 
         s.bind((host, port))                # Fazer bind da porta
         s.listen(5)                         # Esperar conexão do cliente!
 
-        imprimir("\nJogador X --> Servidor\nJogador O --> Cliente\n")
+        imprimir("\r\nJogador X --> Servidor\r\nJogador O --> Cliente\r\n")
 
         # esperar um pouco antes de chamar a thread que conecta o cliente com o servidor
         #time.sleep(5)
-        #input("\nAperte qualquer tecla para continuar...")
+        #input("\r\nAperte qualquer tecla para continuar...")
 
     except OSError :                        # caso o endereço ou porta não possa ser ofertado
         print("Erro!!! Verificar se o endereço ou porta estão corretos!")
@@ -131,7 +153,7 @@ def novoCliente():
     while True :    # loop infinito
 
         # esse delay aqui é muito importante para não causar 100% de uso da CPU ao processar mensagens!
-        time.sleep(0.1)   # tentar encher buffer? serve pra escrever \n corretamente - no cliente
+        time.sleep(0.1)   # tentar encher buffer? serve pra escrever \r\n corretamente - no cliente
 
         try:                                    # tentar receber algo do socket... se vier vazio: rode "except"
             data_received = c.recv(1024)
@@ -153,7 +175,7 @@ def novoCliente():
 
     # a partir daqui: significa que o socket do cliente foi encerrado e o servidor não irá receber mais dados!
     c.close()   
-    print("\nQue feio, servidor! O cliente saiu do jogo!\n")
+    print("\r\nQue feio, servidor! O cliente saiu do jogo!\r\n")
     game_condition = False                      # sem cliente: sem jogo!
 
 
@@ -188,7 +210,7 @@ def enviarCliente() :                           # Função para enviar mensagens
         pass
 
     except:
-        print("\nDEBUG: Algum erro ocorreu ao processar o envio...\n") 
+        print("\r\nDEBUG: Algum erro ocorreu ao processar o envio...\r\n") 
         pass
 
 
@@ -213,7 +235,7 @@ def procurarClientes():                         # Função para ser utilizada na
     
 
     while game_condition == False:              # verifica a condição de jogo periodicamente.
-        print("\n Não encontramos clientes disponiveis...")
+        print("\r\n Não encontramos clientes disponiveis...")
         time.sleep(3)
 
 
@@ -224,17 +246,17 @@ def procurarClientes():                         # Função para ser utilizada na
 
 def full():                                     # Função que verifica se todas as casas 3x3 estão preenchidas
     if ' ' not in score:
-        imprimir('\nO jogo resultou em um empate... jogo de gato e rato!\n( ͡° ͜ʖ ͡°)')
+        imprimir('\r\nO jogo resultou em um empate... jogo de gato e rato!\r\n( ͡° ͜ʖ ͡°)')
         return True
 
 
 def board_display(score):                       # Função que imprime o tabuleiro. Recebe o vetor "score" como parâmetro.
     
-    imprimir(' '+score[6]+ ' | '+ score[7]+ ' | '+ score[8] )#+ "\n")
-    imprimir('---+---+---'  )#+ "\n")   
-    imprimir(' '+score[3]+ ' | '+ score[4]+ ' | '+ score[5] )#+ "\n")
-    imprimir('---+---+---' )#+ "\n")
-    imprimir(' '+score[0]+ ' | '+ score[1]+ ' | '+ score[2] )#+ "\n")
+    imprimir(' '+score[6]+ ' | '+ score[7]+ ' | '+ score[8] )#+ "\r\n")
+    imprimir('---+---+---'  )#+ "\r\n")   
+    imprimir(' '+score[3]+ ' | '+ score[4]+ ' | '+ score[5] )#+ "\r\n")
+    imprimir('---+---+---' )#+ "\r\n")
+    imprimir(' '+score[0]+ ' | '+ score[1]+ ' | '+ score[2] )#+ "\r\n")
 
 
 def check(char, posi1, posi2, posi3):           # Função que verifica posições e caracteres válidos dentro de uma linha do tabuleiro (3x3)
@@ -268,13 +290,8 @@ def comandoSistema(cmd):                        # Função que executa um comand
     global msg
     msg = "/cmd " + cmd
     enviarCliente()
-
-    if cmd != "clear" or cmd != "cls" :         # verificar condição de limpar tela... de acordo com o sistema operacional
-        os.system(cmd)
-
-    else:
-        limparTela()
-
+    limparTela()
+    
 
 def Main():                                     # Função que contêm a lógica principal do jogo.
                                                 # Deve ser invocada usando uma thread.
@@ -288,10 +305,10 @@ def Main():                                     # Função que contêm a lógica
     global banner
 
     comandoSistema("clear")
-    # imprimir('Tic Tac Toe\n'.center(70))
+    # imprimir('Tic Tac Toe\r\n'.center(70))
     
     imprimir(banner)
-    imprimir('\nO tabuleiro é numerado em forma de teclado numérico, conforme impresso abaixo.\n')
+    imprimir('\r\nO tabuleiro é numerado em forma de teclado numérico, conforme impresso abaixo.\r\n')
 
     time.sleep(0.01)
     score = ['1', '2', '3',
@@ -299,19 +316,19 @@ def Main():                                     # Função que contêm a lógica
             '7', '8', '9']
 
     board_display(score)
-    imprimir("\n")
+    imprimir("\r\n")
     
     # imprimir instruções de jogo de forma estilizada com quebra de linha automática em 72 caracteres
-    value = '\n\nO objetivo do Jogo da Velha é obter três marcas em linha. Você joga em um tabuleiro de três por três. O primeiro jogador é conhecido como X e o segundo é O. Os jogadores alternam colocando Xs e Os no tabuleiro até que um dos oponentes tenha três em sequência ou todos os nove quadrados estejam preenchidos. X sempre vai primeiro. No caso de ninguém ter três em linha, o empate é chamado de jogo de gato!\n'
+    value = '\r\n\r\nO objetivo do Jogo da Velha é obter três marcas em linha. Você joga em um tabuleiro de três por três. O primeiro jogador é conhecido como X e o segundo é O. Os jogadores alternam colocando Xs e Os no tabuleiro até que um dos oponentes tenha três em sequência ou todos os nove quadrados estejam preenchidos. X sempre vai primeiro. No caso de ninguém ter três em linha, o empate é chamado de jogo de gato!\r\n'
     wrapper = textwrap.TextWrapper(width=72)
     string = wrapper.fill(text=value)
     
-    #imprimir('\n' )
+    #imprimir('\r\n' )
     imprimir(string)
 
     while game_condition :                      # Enquanto a condição de jogo for verdadeira... executar a lógica de jogo!
 
-        imprimir('\nEm suas marcas...\nO jogo começará em 10 segundos.')
+        imprimir('\r\nEm suas marcas...\r\nO jogo começará em 10 segundos.')
         time.sleep(10)
 
         score = [' ']*9                         # iniciar tabuleiro e vetor de pontuação
@@ -327,29 +344,32 @@ def Main():                                     # Função que contêm a lógica
                 break
 
             while True:                         # loop infinito
-                try:                            # explicar essa porra
-                    msg = "\n>> Esperando Jogador X"
+                try:                            # explicar essa coisa louca
+                    msg = "\r\n>> Esperando Jogador X"
                     enviarCliente()
-                    player1 = int(input('\nJogador X, escolha sua posição: '))
+                    #player1 = int(input('\r\nJogador X, escolha sua posição: '))
+                    print("\r\nO computador está escolhendo a posição da marca...")
+                    player1 = random.randint(1,9)
                     if score[player1-1] != 'X' and score[player1-1] != 'O':
                         score[player1-1] = 'X'
                         break
                     else:
-                        imprimir('\nEssa posição já foi escolhida! Por favor, tente novamente.')
-                        break
+                        imprimir('\r\n>> A posição ' + str(player1) +' já foi escolhida! Por favor, tente novamente.')    # possível bug: o PC pula a jogada
+                        time.sleep(1)
+                        continue        #break - arranquei isso pra tentar remover o bug
                 except:
-                    print('\nPor favor... entre um valor válido...')            # mensagem exclusiva ao Jogador X
+                    print('\r\nPor favor... entre um valor válido...')            # mensagem exclusiva ao Jogador X
                     continue
             comandoSistema('clear')
             board_display(score)
             if checkall('X'):
-                imprimir('\nJogador X é o vencedor!')
+                imprimir('\r\nJogador X é o vencedor!')
                 time.sleep(0.1)
                 break
             if full():
                 break
             # mostrar que está esperando o cliente remoto fazer a jogada
-            print("\n\n>> Esperando Jogador O...")    
+            print("\r\n\r\n>> Esperando Jogador O...")    
             
             contarPergunta = 0
             while askPlayer2:                   # enquanto for o momento de interagir com o cliente e esperar uma entrada de dados dele...
@@ -358,7 +378,7 @@ def Main():                                     # Função que contêm a lógica
                     #    time.sleep(3)
                       
                     if len(recv) != 1:          # acho que vai quebrar a mágica
-                        #msg = "\nJogador O, escolha sua posição: "
+                        #msg = "\r\nJogador O, escolha sua posição: "
                         msg = "/cmd input"
                         
                     else: 
@@ -370,13 +390,13 @@ def Main():                                     # Função que contêm a lógica
                         contarPergunta = contarPergunta + 1   
 
                     else:
-                        msg = " . "                 
+                        msg = "/cmd nothing"                 
                     
                     enviarCliente()
                     time.sleep(1)               # outro delay?
 
                     #print("DEBUG: recv = " + recv)
-                    if len(recv) == 1 : # and (int(recv) in [0,1,2,3,4,5,6,7,8,9]) :
+                    if len(recv) == 1 and int(recv) != 0 : # and (int(recv) in [0,1,2,3,4,5,6,7,8,9]) :
                         #msg = "."        # tentar limpar msg pra não cometer erro por redundância
                         player2 = int(recv)
                         contarPergunta = 0
@@ -389,23 +409,24 @@ def Main():                                     # Função que contêm a lógica
                             break
                         else:
                             if len(recv) == 0 or len(recv) == 1 :
-                                imprimir('\nA posição \"' + str(recv) + '\" já foi marcada! Por favor, tente novamente.')
-                                
+                                imprimir('\r\nA posição \"' + str(recv) + '\" já foi marcada! Por favor, tente novamente.')
+                                time.sleep(1)
                             continue
 
                         break
                         
                     
                     if len(recv) != 1 and recv != "invalido" :  # nunca verificar nada contra a string "invalido" a ser recebida
-                        imprimir('\nNEW: Por favor... entre um valor válido... e não \"' + str(recv) + '\" ')
-                        continue    # forçar ir ao pass do try? Não!
+                        imprimir('\r\n>> Por favor... entre um valor válido... e não \"' + str(recv) + '\" ')
+                        time.sleep(1)
+                        #continue    # forçar ir ao pass do try? Não!
 
-                    pass  # talvez isso quebre tudo! # explicar essa porra
+                    pass  # talvez isso quebre tudo! # explicar isso aqui...
 
 
                 except Exception as e :
                     print(e)
-                    #imprimir('\nOLD: Por favor... entre um valor válido... e não \"' + str(recv) + '\" ' )
+                    #imprimir('\r\nOLD: Por favor... entre um valor válido... e não \"' + str(recv) + '\" ' )
                     continue
 
 
@@ -413,7 +434,7 @@ def Main():                                     # Função que contêm a lógica
             board_display(score)
 
             if checkall('O'):
-                imprimir('\nJogador O é o vencedor!')
+                imprimir('\r\nJogador O é o vencedor!')
                 time.sleep(0.1)
                 break
             if full():
@@ -422,28 +443,40 @@ def Main():                                     # Função que contêm a lógica
         # forçar fechar socket
         if thread_list["novoCliente"].is_alive() :
             s.close()
-        
-        msg = "O servidor está decidindo se ele quer jogar de novo..."
-        enviarCliente()
-        
-        again = input('\nVocê quer jogar de novo? Entre com \"sim\" ou \"nao\": ')
-        if again.lower() == 'sim':
-            continue
-        elif again.lower() == 'nao' or not thread_list["novoCliente"].is_alive() :
-            imprimir(" ")
-            imprimir('Obrigado por jogar!!! Volte sempre!!!'.center(80))
-            imprimir('\nSaindo em  3..')
-            time.sleep(1)
-            imprimir('           2..')
-            time.sleep(1)
-            imprimir('           1..')
-            time.sleep(1)
-            msg = "/cmd quit"
-            enviarCliente()
-            break
-        else:                       # verificar se esse ELIF tá correto!
-            imprimir('\nEntre uma escolha correta')
 
+        again = ""    
+
+        imprimir('\r\nVocê quer jogar de novo? Entre com \"sim\" ou \"nao\": ')
+            
+        while again.lower() != 'sim':
+
+                again = recv
+
+                if again.lower() == 'nao' or not thread_list["novoCliente"].is_alive() :
+                    imprimir(" ")
+                    imprimir('Obrigado por jogar!!! Volte sempre!!!'.center(80))
+                    imprimir('\r\nSaindo em  3..')
+                    time.sleep(1)
+                    imprimir('           2..')
+                    time.sleep(1)
+                    imprimir('           1..')
+                    time.sleep(1)
+                    msg = "/cmd quit"
+                    enviarCliente()
+                    exit()
+                    #break
+
+                else :
+                    
+                    #for palavra in ["invalido","sim","nao"] :
+                    if recv.lower() != "invalido" :
+                        imprimir('\r\nEntre uma escolha correta! E não: \"' + str(again) + '\"' )
+                    else:
+                        imprimir(" . ")
+                        time.sleep(3)
+
+
+            
     exit
 
 # fim do jogo aqui

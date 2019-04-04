@@ -2,17 +2,39 @@ import os, time
 import socket
 
 # função de limpar tela universal - entre WinNT e POSIX (Linux, macOS)
-from platform import system as system_name
+from platform import system as system_name 
+
+print("Sistema Operacional: " + os.name)
+time.sleep(1)
+
+import locale
+if os.name == "nt":
+    
+    def getpreferredencoding(do_setlocale = True):
+        return "cp1252"
+
+    locale.getpreferredencoding = getpreferredencoding
+    
+
+print("Locale: " + locale.getpreferredencoding())
+time.sleep(2)
+
+
 def limparTela():
-    os.system('cls' if os.name == 'nt' else 'clear')
+    if os.name == 'nt':         # existe um bug
+        print("\r\n" * 24)  
+    
+    else:
+        os.system("clear")
+
 
 
 podeConectar = False
 
 HOST = input("Digite o nome do host: ") #'127.0.0.1'
 if HOST == "" :
-    HOST = "ihack-de-rafael.local"
-    print("\nUsando " + HOST + "!\n")
+    HOST = socket.gethostname() #"ihack-de-rafael.local"
+    print("\r\nUsando " + HOST + "!\r\n")
 
 PORT = 50790  # ADV0 em T9
 
@@ -25,7 +47,7 @@ try:
     pass
     
 except ConnectionRefusedError:
-    print("\nConexão recusada! O servidor está online?\n\n")
+    print("\r\nConexão recusada! O servidor está online?\r\n\r\n")
     exit
 
 def capturarEntrada() :
@@ -40,7 +62,7 @@ def interagirSocket():
     global tcp
     global podeConectar
 
-    print("Para sair use CTRL+X\n")
+    print("Para sair use CTRL+X\r\n")
 
     msg_inicial = "Olá!"
     msg = msg_inicial
@@ -73,9 +95,9 @@ def interagirSocket():
 
         
         recv = data_received.decode()
-        if len(recv) > 0:
-            #print(recv)
-            print("")
+        if len(recv) > 0 and "/cmd" not in recv :
+            print(recv)
+            #print("")
 
         if "/cmd " in recv :
             verb = recv.split("/cmd ")[1]
@@ -84,7 +106,7 @@ def interagirSocket():
 
                 # condicionais específicas
                 if verb == "input" :
-                    print("\nEntre com a posição desejada: ")
+                    print("\r\nEntre com a posição desejada: ")
                     recv = "."
                     time.sleep(3)
 
