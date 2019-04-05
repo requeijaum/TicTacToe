@@ -49,7 +49,6 @@ def limparTela():
 host = socket.gethostname()             #'localhost' ou socket.gethostname() --> Saber o nome de host da máquina
 port = 50790                            # Reservar/alocar uma porta para o serviço
 
-
 banner = r'''
                  _____  _  ____     _____  ____  ____     _____  ____  _____
                 /__ __\/ \/   _\   /__ __\/  _ \/   _\   /__ __\/  _ \/  __/
